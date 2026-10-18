@@ -12,7 +12,7 @@ const Order = require("../entities/Order");
  * @param {Object} data - { paymentMethod, items: [{ productId, quantity, size, sweetness, toppings }] }
  */
 async function createOrder(data) {
-  const { paymentMethod, items } = data;
+  const { paymentMethod, items, branchId } = data;
 
   // --- FR-03: Validate ข้อมูลที่จำเป็น ---
   if (!items || !Array.isArray(items) || items.length === 0) {
@@ -29,16 +29,24 @@ async function createOrder(data) {
   const resolvedItems = [];
 
   for (const item of items) {
-    const { productId, quantity, sizeId, sweetnessId, toppingIds } = item;
+    const {
+      productId,
+      quantity,
+      sizeId,
+      sweetnessId,
+      toppingIds,
+      temperatureId,
+      bakeryOptionId,
+      temperatureName,
+      sizeName,
+      sweetnessName,
+      toppingNames,
+      bakeryOptionName,
+    } = item;
 
     // Validate: ต้องมี productId และ quantity
     if (!productId || !quantity || quantity <= 0) {
       return { status: 400, body: { error: "ข้อมูลรายการสินค้าไม่ถูกต้อง (ต้องระบุ productId และ quantity)" } };
-    }
-
-    // FR-03: ต้องเลือกขนาด (sizeId) สำหรับเครื่องดื่ม
-    if (!sizeId) {
-      return { status: 400, body: { error: "กรุณาเลือกขนาดเครื่องดื่ม (sizeId)" } };
     }
 
     // ตรวจสอบว่าเมนูมีอยู่จริง
@@ -47,16 +55,40 @@ async function createOrder(data) {
       return { status: 404, body: { error: `ไม่พบเมนู id ${productId}` } };
     }
 
-    // คำนวณราคา: base_price + ขนาด + ท็อปปิง
-    let unitPrice = product.base_price;
+    // ตรวจสอบว่าเป็นขนม/เบเกอรี่หรือไม่
+    const isBakery =
+      product.category_name === "เบเกอรี่" ||
+      product.category_id === 4 ||
+      (product.category_name &&
+        (product.category_name.includes("ขนม") ||
+          product.category_name.includes("อาหาร") ||
+          product.category_name.toLowerCase().includes("bakery")));
 
-    // บวกราคาขนาด
-    const sizeOption = await ProductOption.findById(sizeId);
-    if (sizeOption) {
-      unitPrice += sizeOption.extra_price;
+    // FR-03: ต้องเลือกขนาด (sizeId) เฉพาะสำหรับเครื่องดื่ม (ถ้าเป็นขนมไม่ต้องเลือก)
+    if (!isBakery && !sizeId) {
+      return { status: 400, body: { error: "กรุณาเลือกขนาดเครื่องดื่ม (sizeId)" } };
     }
 
-    // บวกราคาท็อปปิง (ถ้ามี)
+    // คำนวณราคา: base_price + ประเภทเครื่องดื่ม (ร้อน/เย็น/ปั่น) + ขนาด + ท็อปปิง
+    let unitPrice = product.base_price;
+
+    // 1. ตัวเลือกประเภทเครื่องดื่ม (ร้อน/เย็น/ปั่น)
+    if (temperatureId) {
+      const tempOption = await ProductOption.findById(temperatureId);
+      if (tempOption) {
+        unitPrice += tempOption.extra_price;
+      }
+    }
+
+    // 2. ตัวเลือกขนาดแก้ว (เฉพาะเครื่องดื่ม)
+    if (sizeId) {
+      const sizeOption = await ProductOption.findById(sizeId);
+      if (sizeOption) {
+        unitPrice += sizeOption.extra_price;
+      }
+    }
+
+    // 3. ท็อปปิงเสริม (ถ้ามี)
     if (toppingIds && toppingIds.length > 0) {
       const toppings = await ProductOption.findByIds(toppingIds);
       for (const topping of toppings) {
@@ -64,14 +96,30 @@ async function createOrder(data) {
       }
     }
 
+    // 4. ตัวเลือกเบเกอรี่ (ถ้ามี)
+    if (bakeryOptionId) {
+      const bakeryOpt = await ProductOption.findById(bakeryOptionId);
+      if (bakeryOpt) {
+        unitPrice += bakeryOpt.extra_price;
+      }
+    }
+
     const subtotal = unitPrice * quantity;
     totalAmount += subtotal;
 
-    // เก็บข้อมูลตัวเลือกเป็น JSON
+    // เก็บข้อมูลตัวเลือกเป็น JSON ครบถ้วน
     const optionsJson = JSON.stringify({
+      temperatureId: temperatureId || null,
+      temperatureName: temperatureName || null,
       sizeId: sizeId || null,
+      sizeName: sizeName || null,
       sweetnessId: sweetnessId || null,
+      sweetnessName: sweetnessName || null,
       toppingIds: toppingIds || [],
+      toppingNames: toppingNames || [],
+      bakeryOptionId: bakeryOptionId || null,
+      bakeryOptionName: bakeryOptionName || null,
+      isBakery: !!isBakery,
     });
 
     resolvedItems.push({
@@ -96,6 +144,7 @@ async function createOrder(data) {
 
   // --- บันทึกลง DB ---
   const order = await Order.create({
+    branchId: parseInt(branchId, 10) || 1,
     orderNo,
     queueNo,
     totalAmount,
@@ -119,6 +168,7 @@ async function createOrder(data) {
     status: 201,
     body: {
       orderId: order.id,
+      branchId: order.branchId,
       orderNo: order.orderNo,
       queueNo: order.queueNo,
       totalAmount,
@@ -129,11 +179,11 @@ async function createOrder(data) {
 }
 
 /**
- * ดึงรายการคิวสำหรับหน้าจอบาริสต้า
+ * ดึงรายการคิวสำหรับหน้าจอบาริสต้า (รองรับการกรองตามสาขา)
  * อ้างอิง: FR-07, FR-08
  */
-async function getQueue() {
-  const orders = await Order.findQueue();
+async function getQueue(branchId = null) {
+  const orders = await Order.findQueue(branchId);
   return { status: 200, body: orders };
 }
 
@@ -184,5 +234,14 @@ async function cancelOrder(orderId) {
   return { status: 200, body: { id: orderId, status: "cancelled", message: "ยกเลิกออเดอร์เรียบร้อยแล้ว" } };
 }
 
-module.exports = { createOrder, getQueue, updateStatus, cancelOrder };
+/**
+ * ดึงรายงานยอดขายและสถิติภาพรวมสำหรับมุมมองเจ้าของร้าน (Owner View)
+ * อ้างอิง: FR-05, Use Case 08 (ดูรายงานยอดขาย)
+ */
+async function getSalesReport(branchId = null) {
+  const report = await Order.getSalesReport(branchId);
+  return { status: 200, body: report };
+}
+
+module.exports = { createOrder, getQueue, updateStatus, cancelOrder, getSalesReport };
 

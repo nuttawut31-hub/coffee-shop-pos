@@ -13,10 +13,11 @@ import {
 import QueueCard from './QueueCard';
 import { fetchQueue, updateOrderStatus, fetchProducts, cancelOrder } from '../../services/api';
 
-export default function BaristaView() {
+export default function BaristaView({ selectedBranch = 1, branches = [] }) {
   const [orders, setOrders] = useState([]);
   const [optionsMap, setOptionsMap] = useState({ sizes: {}, sweetness: {}, toppings: {} });
   const [activeFilter, setActiveFilter] = useState('all');
+  const [branchFilter, setBranchFilter] = useState(selectedBranch ? String(selectedBranch) : 'all');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -24,12 +25,28 @@ export default function BaristaView() {
   const [cancellingId, setCancellingId] = useState(null);
   const [lastRefreshedAt, setLastRefreshedAt] = useState(new Date());
 
+  // Update branch filter when parent navbar changes selected branch
+  useEffect(() => {
+    if (selectedBranch) {
+      setBranchFilter(String(selectedBranch));
+    }
+  }, [selectedBranch]);
+
   // Load option definitions once for decoding formulas
   useEffect(() => {
     async function loadOptions() {
       try {
         const prodData = await fetchProducts();
-        const map = { sizes: {}, sweetness: {}, toppings: {} };
+        const map = {
+          sizes: {},
+          sweetness: {},
+          toppings: {},
+          temperature: {},
+          bakery_option: {},
+        };
+        (prodData.options?.temperature || []).forEach((opt) => {
+          map.temperature[opt.id] = opt.name;
+        });
         (prodData.options?.size || []).forEach((opt) => {
           map.sizes[opt.id] = opt.name;
         });
@@ -39,6 +56,9 @@ export default function BaristaView() {
         (prodData.options?.topping || []).forEach((opt) => {
           map.toppings[opt.id] = opt.name;
         });
+        (prodData.options?.bakery_option || []).forEach((opt) => {
+          map.bakery_option[opt.id] = opt.name;
+        });
         setOptionsMap(map);
       } catch (err) {
         console.error('Failed to load options metadata:', err);
@@ -47,11 +67,11 @@ export default function BaristaView() {
     loadOptions();
   }, []);
 
-  // Fetch queue data
+  // Fetch queue data filtered by branch
   const loadQueueData = async (showLoadingSpinner = false) => {
     if (showLoadingSpinner) setIsRefreshing(true);
     try {
-      const data = await fetchQueue();
+      const data = await fetchQueue(branchFilter === 'all' ? null : branchFilter);
       // Ensure it's an array
       const queueList = Array.isArray(data) ? data : data.value || [];
       setOrders(queueList);
@@ -73,7 +93,7 @@ export default function BaristaView() {
       loadQueueData(false);
     }, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [branchFilter]);
 
   // Update order status handler
   const handleUpdateStatus = async (orderId, newStatus) => {
@@ -133,14 +153,35 @@ export default function BaristaView() {
           </div>
         </div>
 
-        <button
-          className={`manual-refresh-btn ${isRefreshing ? 'spinning' : ''}`}
-          onClick={() => loadQueueData(true)}
-          title="รีเฟรชข้อมูลเดี๋ยวนี้"
-        >
-          <RefreshCw size={16} />
-          <span>รีเฟรช</span>
-        </button>
+        <div className="barista-header-actions">
+          {/* Branch Filter Pills */}
+          <div className="barista-branch-pills">
+            <button
+              className={`branch-pill ${branchFilter === 'all' ? 'active' : ''}`}
+              onClick={() => setBranchFilter('all')}
+            >
+              ทุกสาขา
+            </button>
+            {(branches || []).map((b) => (
+              <button
+                key={b.id}
+                className={`branch-pill ${branchFilter === String(b.id) ? 'active' : ''}`}
+                onClick={() => setBranchFilter(String(b.id))}
+              >
+                {b.name.split(':')[0] || b.name}
+              </button>
+            ))}
+          </div>
+
+          <button
+            className={`manual-refresh-btn ${isRefreshing ? 'spinning' : ''}`}
+            onClick={() => loadQueueData(true)}
+            title="รีเฟรชข้อมูลเดี๋ยวนี้"
+          >
+            <RefreshCw size={16} />
+            <span>รีเฟรช</span>
+          </button>
+        </div>
       </div>
 
       {/* KPI Stats Bar */}

@@ -11,7 +11,8 @@ const app = express();
 // Middleware
 // ---------------------------------------------------------------------------
 app.use(cors());                                           // อนุญาต cross-origin (Frontend แยก port)
-app.use(express.json());                                   // รับ JSON body
+app.use(express.json({ limit: "30mb" }));                  // รับ JSON body พร้อมรองรับรูปภาพ base64 ขนาดใหญ่
+app.use(express.urlencoded({ extended: true, limit: "30mb" }));
 const frontendDist = path.join(__dirname, "../frontend/dist");
 app.use(express.static(frontendDist));
 app.use(express.static(path.join(__dirname, "public")));   // Serve static files

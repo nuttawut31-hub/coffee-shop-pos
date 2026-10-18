@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   ShoppingCart,
   Trash2,
@@ -9,12 +9,12 @@ import {
   QrCode,
   ArrowRight,
   Sparkles,
-} from 'lucide-react';
+} from "lucide-react";
 
 const PAYMENT_METHODS = [
-  { id: 'cash', label: 'เงินสด', icon: Banknote },
-  { id: 'transfer', label: 'เงินโอน', icon: CreditCard },
-  { id: 'qr', label: 'QR Code', icon: QrCode },
+  { id: "cash", label: "เงินสด", icon: Banknote },
+  { id: "transfer", label: "เงินโอน", icon: CreditCard },
+  { id: "qr", label: "QR Code", icon: QrCode },
 ];
 
 export default function CartSidebar({
@@ -25,7 +25,7 @@ export default function CartSidebar({
   onCheckout,
   isSubmitting,
 }) {
-  const [selectedPayment, setSelectedPayment] = useState('cash');
+  const [selectedPayment, setSelectedPayment] = useState("cash");
 
   const totalQuantity = cartItems.reduce((acc, item) => acc + item.quantity, 0);
   const totalAmount = cartItems.reduce((acc, item) => acc + item.subtotal, 0);
@@ -83,28 +83,68 @@ export default function CartSidebar({
           </div>
         ) : (
           cartItems.map((item, index) => (
-            <div key={`${item.productId}-${item.sizeId}-${item.sweetnessId}-${index}`} className="cart-item-card">
+            <div
+              key={`${item.productId}-${item.temperatureId || "t"}-${item.sizeId || "s"}-${item.bakeryOptionId || "b"}-${index}`}
+              className="cart-item-card"
+            >
               <div className="cart-item-top">
                 <span className="cart-item-name">{item.product.name}</span>
-                <span className="cart-item-subtotal">฿{item.subtotal.toFixed(2)}</span>
+                <span className="cart-item-subtotal">
+                  ฿{item.subtotal.toFixed(2)}
+                </span>
               </div>
 
               {/* Customization Badges */}
               <div className="cart-item-badges">
-                {item.sizeName && <span className="cart-badge size">{item.sizeName}</span>}
-                {item.sweetnessName && (
-                  <span className="cart-badge sweetness">{item.sweetnessName.split(' ')[0]}</span>
-                )}
-                {item.toppingNames && item.toppingNames.length > 0 && (
-                  <span className="cart-badge topping">
-                    +{item.toppingNames.join(', ')}
-                  </span>
+                {item.isBakery ? (
+                  <>
+                    <span className="cart-badge bakery">🥐 เบเกอรี่</span>
+                    {item.bakeryOptionName && (
+                      <span
+                        className={`cart-badge ${item.bakeryOptionName.includes("อุ่น") ? "bakery-warm" : "bakery-normal"}`}
+                      >
+                        {item.bakeryOptionName.includes("อุ่น")
+                          ? " อุ่นร้อน"
+                          : " ไม่ต้องอุ่น"}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {item.temperatureName && (
+                      <span
+                        className={`cart-badge temp ${item.temperatureName.includes("ร้อน") ? "hot" : item.temperatureName.includes("ปั่น") ? "frappe" : "iced"}`}
+                      >
+                        {item.temperatureName.includes("ร้อน")
+                          ? " ร้อน"
+                          : item.temperatureName.includes("ปั่น")
+                            ? "ปั่น"
+                            : "เย็น"}
+                      </span>
+                    )}
+                    {item.sizeName && (
+                      <span className="cart-badge size">{item.sizeName}</span>
+                    )}
+                    {item.sweetnessName && (
+                      <span className="cart-badge sweetness">
+                        {item.sweetnessName.split(" ")[0]}
+                      </span>
+                    )}
+                    {item.toppingNames && item.toppingNames.length > 0 && (
+                      <span className="cart-badge topping">
+                        +{item.toppingNames.join(", ")}
+                      </span>
+                    )}
+                  </>
                 )}
               </div>
 
               {/* Item Controls */}
               <div className="cart-item-controls">
-                <span className="unit-price-hint">฿{item.unitPrice.toFixed(2)} / ชิ้น</span>
+                <span className="unit-price-hint">
+                  ฿{item.unitPrice.toFixed(2)} /{" "}
+                  {item.isBakery ? "ชิ้น" : "แก้ว"}
+                </span>
 
                 <div className="qty-control-compact">
                   <button
@@ -149,7 +189,7 @@ export default function CartSidebar({
                   <button
                     key={method.id}
                     type="button"
-                    className={`payment-pill ${isSelected ? 'selected' : ''}`}
+                    className={`payment-pill ${isSelected ? "selected" : ""}`}
                     onClick={() => setSelectedPayment(method.id)}
                   >
                     <Icon size={16} />

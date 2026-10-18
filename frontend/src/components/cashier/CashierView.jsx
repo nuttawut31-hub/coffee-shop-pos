@@ -5,9 +5,15 @@ import CustomizationModal from './CustomizationModal';
 import CartSidebar from './CartSidebar';
 import ReceiptModal from './ReceiptModal';
 import { fetchProducts, createOrder } from '../../services/api';
-import { AlertCircle, RefreshCw } from 'lucide-react';
+import { AlertCircle, RefreshCw, Store } from 'lucide-react';
 
-export default function CashierView({ onOrderPlaced, onSwitchToBarista }) {
+export default function CashierView({
+  selectedBranch = 1,
+  branches = [],
+  onOrderPlaced,
+  onSwitchToBarista,
+}) {
+  const currentBranch = branches.find((b) => b.id === Number(selectedBranch));
   const [categories, setCategories] = useState([]);
   const [options, setOptions] = useState({ size: [], sweetness: [], topping: [] });
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
@@ -48,14 +54,23 @@ export default function CashierView({ onOrderPlaced, onSwitchToBarista }) {
   // Add customized product to cart
   const handleAddToCart = (item) => {
     setCartItems((prev) => {
-      // Check if identical item already in cart (same product, size, sweetness, toppings)
-      const existingIdx = prev.findIndex(
-        (existing) =>
+      // Check if identical item already in cart (same product and customizations)
+      const existingIdx = prev.findIndex((existing) => {
+        if (item.isBakery || existing.isBakery) {
+          return (
+            existing.productId === item.productId &&
+            existing.bakeryOptionId === item.bakeryOptionId
+          );
+        }
+        return (
           existing.productId === item.productId &&
+          existing.temperatureId === item.temperatureId &&
           existing.sizeId === item.sizeId &&
           existing.sweetnessId === item.sweetnessId &&
-          JSON.stringify(existing.toppingIds.sort()) === JSON.stringify(item.toppingIds.sort())
-      );
+          JSON.stringify((existing.toppingIds || []).sort()) ===
+            JSON.stringify((item.toppingIds || []).sort())
+        );
+      });
 
       if (existingIdx !== -1) {
         // Increment quantity and subtotal
@@ -105,6 +120,7 @@ export default function CashierView({ onOrderPlaced, onSwitchToBarista }) {
       const result = await createOrder({
         paymentMethod,
         items,
+        branchId: selectedBranch,
       });
 
       // Snapshot cart before clearing (for receipt print)
@@ -127,6 +143,15 @@ export default function CashierView({ onOrderPlaced, onSwitchToBarista }) {
     <div className="cashier-layout">
       {/* Left Menu Section */}
       <main className="menu-container">
+        {/* Branch Info Banner */}
+        <div className="cashier-branch-banner">
+          <Store size={16} className="branch-banner-icon" />
+          <span>
+            กำลังให้บริการที่: <strong>{currentBranch ? currentBranch.name : `สาขา #${selectedBranch}`}</strong>
+            {currentBranch?.address ? ` (${currentBranch.address})` : ''}
+          </span>
+        </div>
+
         {/* Category Filter Pills */}
         <CategoryTabs
           categories={categories}
@@ -189,6 +214,7 @@ export default function CashierView({ onOrderPlaced, onSwitchToBarista }) {
         <ReceiptModal
           orderResult={orderResult}
           cartItems={receiptCartSnapshot}
+          branchName={currentBranch ? currentBranch.name : `สาขา #${selectedBranch}`}
           onClose={() => setOrderResult(null)}
           onSwitchToBarista={onSwitchToBarista}
         />

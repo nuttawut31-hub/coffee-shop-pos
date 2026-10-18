@@ -14,6 +14,24 @@ export async function fetchProducts() {
   return res.json();
 }
 
+export async function fetchCategories() {
+  const res = await fetch(`${API_BASE}/categories`);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `Failed to fetch categories: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function fetchBranches() {
+  const res = await fetch(`${API_BASE}/branches`);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `Failed to fetch branches: ${res.statusText}`);
+  }
+  return res.json();
+}
+
 export async function createOrder(orderData) {
   const res = await fetch(`${API_BASE}/orders`, {
     method: "POST",
@@ -29,8 +47,9 @@ export async function createOrder(orderData) {
   return data;
 }
 
-export async function fetchQueue() {
-  const res = await fetch(`${API_BASE}/orders/queue`);
+export async function fetchQueue(branchId = null) {
+  const query = branchId ? `?branchId=${encodeURIComponent(branchId)}` : "";
+  const res = await fetch(`${API_BASE}/orders/queue${query}`);
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.error || `Failed to fetch queue: ${res.statusText}`);
@@ -60,6 +79,72 @@ export async function cancelOrder(orderId) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(data.error || "ไม่สามารถยกเลิกออเดอร์ได้");
+  }
+  return data;
+}
+
+export async function fetchSalesReport(branchId = null) {
+  const query = branchId ? `?branchId=${encodeURIComponent(branchId)}` : "";
+  const res = await fetch(`${API_BASE}/reports/sales${query}`);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `Failed to fetch sales report: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function createProduct(productData) {
+  const res = await fetch(`${API_BASE}/products`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(productData),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || "ไม่สามารถเพิ่มเมนูได้");
+  }
+  return data;
+}
+
+export async function updateProduct(id, productData) {
+  const res = await fetch(`${API_BASE}/products/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(productData),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || "ไม่สามารถแก้ไขเมนูได้");
+  }
+  return data;
+}
+
+export async function deleteProduct(id) {
+  const res = await fetch(`${API_BASE}/products/${id}`, {
+    method: "DELETE",
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || "ไม่สามารถลบเมนูได้");
+  }
+  return data;
+}
+
+export async function uploadImage(base64Data) {
+  const res = await fetch(`${API_BASE}/upload`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ data: base64Data }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || "ไม่สามารถอัปโหลดรูปภาพได้");
   }
   return data;
 }

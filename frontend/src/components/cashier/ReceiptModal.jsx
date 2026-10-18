@@ -8,6 +8,7 @@ const POS_NAME = "POS 1";
 export default function ReceiptModal({
   orderResult,
   cartItems = [],
+  branchName = "สาขา 1: หน้า ม.บูรพา (Main Campus)",
   onClose,
   onSwitchToBarista,
 }) {
@@ -66,6 +67,10 @@ export default function ReceiptModal({
         {/* Order Details Summary */}
         <div className="receipt-details">
           <div className="receipt-detail-row">
+            <span>สาขา:</span>
+            <strong>{branchName}</strong>
+          </div>
+          <div className="receipt-detail-row">
             <span>วิธีชำระเงิน:</span>
             <strong>
               {paymentLabels[orderResult.paymentMethod] ||
@@ -122,12 +127,13 @@ export default function ReceiptModal({
         <div className="pr-header">
           <div className="pr-logo">☕</div>
           <div className="pr-shop-name">{SHOP_NAME}</div>
-          <div className="pr-shop-sub">Shop</div>
+          <div className="pr-shop-sub">{branchName}</div>
         </div>
 
         <div className="pr-divider-dashed" />
 
         {/* ── Transaction Info ── */}
+        <div className="pr-info-row">Branch: {branchName}</div>
         <div className="pr-info-row">Cashier: {CASHIER_NAME}</div>
         <div className="pr-info-row">POS: {POS_NAME}</div>
         <div className="pr-info-row">Order: {orderResult.orderNo}</div>
@@ -151,13 +157,20 @@ export default function ReceiptModal({
                 </div>
                 <div className="pr-item-detail">
                   {item.quantity} x {Number(item.unitPrice).toFixed(2)}
-                  {item.sizeName ? ` · ${item.sizeName}` : ""}
-                  {item.sweetnessName
-                    ? ` · ${item.sweetnessName.split(" ")[0]}`
-                    : ""}
-                  {item.toppingNames && item.toppingNames.length > 0
-                    ? ` · ${item.toppingNames.join(", ")}`
-                    : ""}
+                  {item.isBakery ? (
+                    item.bakeryOptionName ? ` · ${item.bakeryOptionName}` : ""
+                  ) : (
+                    <>
+                      {item.temperatureName ? ` · ${item.temperatureName.split(" ")[0]}` : ""}
+                      {item.sizeName ? ` · ${item.sizeName}` : ""}
+                      {item.sweetnessName
+                        ? ` · ${item.sweetnessName.split(" ")[0]}`
+                        : ""}
+                      {item.toppingNames && item.toppingNames.length > 0
+                        ? ` · ${item.toppingNames.join(", ")}`
+                        : ""}
+                    </>
+                  )}
                 </div>
               </div>
             ))

@@ -24,6 +24,38 @@ class Product {
   static async findById(id) {
     return db.get("SELECT * FROM products WHERE id = ? AND is_active = 1", [id]);
   }
+
+  /**
+   * เพิ่มเมนูใหม่ (สำหรับเจ้าของร้าน - Use Case 07, FR-04)
+   */
+  static async create({ categoryId, name, basePrice, imageUrl }) {
+    const result = await db.run(
+      `INSERT INTO products (category_id, name, base_price, image_url, is_active)
+       VALUES (?, ?, ?, ?, 1)`,
+      [categoryId, name, basePrice, imageUrl || null]
+    );
+    return { id: result.lastID, categoryId, name, basePrice, imageUrl };
+  }
+
+  /**
+   * แก้ไขเมนูและราคา (สำหรับเจ้าของร้าน - Use Case 07, FR-04)
+   */
+  static async update(id, { categoryId, name, basePrice, imageUrl }) {
+    await db.run(
+      `UPDATE products 
+       SET category_id = ?, name = ?, base_price = ?, image_url = ?
+       WHERE id = ?`,
+      [categoryId, name, basePrice, imageUrl, id]
+    );
+    return { id, categoryId, name, basePrice, imageUrl };
+  }
+
+  /**
+   * ลบเมนู (Soft Delete ป้องกัน Foreign Key ใน order_items เสียหาย)
+   */
+  static async delete(id) {
+    return db.run("UPDATE products SET is_active = 0 WHERE id = ?", [id]);
+  }
 }
 
 module.exports = Product;

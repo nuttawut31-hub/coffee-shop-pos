@@ -60,10 +60,11 @@ npm install && npm start
 
 ## 📡 REST API Endpoints
 
-| Method   | Endpoint                 | รายละเอียด                |
-| -------- | ------------------------ | ------------------------- |
-| `GET`    | `/api/products`          | ดึงเมนูทั้งหมด + ตัวเลือก |
-| `POST`   | `/api/orders`            | สร้างออเดอร์ใหม่          |
-| `GET`    | `/api/orders/queue`      | ดึงคิวสำหรับบาริสต้า      |
-| `PATCH`  | `/api/orders/:id/status` | อัปเดตสถานะคิว            |
-| `DELETE` | `/api/orders/:id`        | ยกเลิกออเดอร์             |
+| Method   | Endpoint                 | รายละเอียด                                                |
+| -------- | ------------------------ | --------------------------------------------------------- |
+| `GET`    | `/api/products`          | ดึงเมนูทั้งหมด + ตัวเลือก (Cashier POS View)              |
+| `POST`   | `/api/orders`            | สร้างออเดอร์ใหม่ พร้อมคำนวณราคาและออกเลขคิว               |
+| `GET`    | `/api/orders/queue`      | ดึงคิวสำหรับบาริสต้า (Barista Queue View)                 |
+| `PATCH`  | `/api/orders/:id/status` | อัปเดตสถานะคิว (pending → cooking → ready → completed)    |
+| `DELETE` | `/api/orders/:id`        | ยกเลิกออเดอร์                                             |
+| `GET`    | `/api/reports/sales`     | ดึงรายงานยอดขาย สถิติ และประวัติออเดอร์ (Owner Dashboard) |
